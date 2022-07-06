@@ -25,3 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+## License
+
+This project is licensed under the [MIT license].
+
+[MIT license]: https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE
