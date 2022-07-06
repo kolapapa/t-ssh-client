@@ -1,8 +1,10 @@
 use std::future;
 use std::io::Write;
 use std::sync::Arc;
+use std::time::Duration;
 
 use thrussh_keys::key;
+use tokio::time;
 
 #[derive(Default)]
 pub struct Output {
@@ -26,9 +28,9 @@ impl Output {
 }
 
 #[derive(Default)]
-struct Client {}
+struct Handler {}
 
-impl thrussh::client::Handler for Client {
+impl thrussh::client::Handler for Handler {
     type Error = thrussh::Error;
     type FutureBool = future::Ready<Result<(Self, bool), Self::Error>>;
     type FutureUnit = future::Ready<Result<(Self, thrussh::client::Session), Self::Error>>;
@@ -48,15 +50,22 @@ impl thrussh::client::Handler for Client {
 }
 
 pub struct Session {
-    inner: thrussh::client::Handle<Client>,
+    inner: thrussh::client::Handle<Handler>,
 }
 
 impl Session {
-    pub async fn connect(addr: &str) -> Result<Session, thrussh::Error> {
+    pub async fn connect(addr: &str, timeout: Duration) -> Result<Session, thrussh::Error> {
         let config = Arc::new(thrussh::client::Config::default());
-        let client = Client::default();
-        let ssh = thrussh::client::connect(config, addr, client).await?;
-        Ok(Self { inner: ssh })
+        match time::timeout(
+            timeout,
+            thrussh::client::connect(config, addr, Handler::default()),
+        )
+        .await
+        {
+            Ok(Ok(handle)) => Ok(Self { inner: handle }),
+            Ok(Err(err)) => Err(err),
+            Err(err) => Err(thrussh::Error::Elapsed(err)),
+        }
     }
 
     pub async fn auth_with_password(
