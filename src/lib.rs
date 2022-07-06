@@ -59,11 +59,19 @@ impl Session {
         Ok(Self { inner: ssh })
     }
 
-    pub async fn auth(&mut self, username: &str, password: &str) -> Result<bool, thrussh::Error> {
+    pub async fn auth_with_password(
+        &mut self,
+        username: &str,
+        password: &str,
+    ) -> Result<(), thrussh::Error> {
         let success = self.inner.authenticate_password(username, password).await?;
-        Ok(success)
+        if !success {
+            return Err(thrussh::Error::NotAuthenticated);
+        }
+        Ok(())
     }
 
+    #[allow(unused_variables)]
     pub async fn execute(&mut self, command: &str) -> Result<Output, thrussh::Error> {
         let mut channel = self.inner.channel_open_session().await?;
         channel.exec(true, command).await?;
@@ -78,11 +86,8 @@ impl Session {
                 }
                 thrussh::ChannelMsg::ExtendedData { ref data, ext } => {
                     res.stderr.write_all(&data)?;
-                    res.code = Some(ext);
                 }
-                thrussh::ChannelMsg::Eof => {
-                    break;
-                }
+
                 _ => {}
             }
         }
