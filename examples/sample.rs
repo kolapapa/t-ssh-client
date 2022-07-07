@@ -1,14 +1,14 @@
 use std::env;
 use std::time::Duration;
 
-use t_ssh_client::{AuthMethod, Client, Password};
+use t_ssh_client::{AuthMethod, Client, PasswordAuth};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let password = Password::new("admin", &env::var("PASSWORD")?);
+    let pa = PasswordAuth::new("admin", &env::var("PASSWORD")?);
 
     let mut client = Client::builder()
-        .auth(AuthMethod::Password(password))
+        .auth(AuthMethod::Password(pa))
         .connect_timeout(Duration::from_secs(2))
         .connect("192.168.62.1:22")
         .await?;

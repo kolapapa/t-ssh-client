@@ -8,12 +8,12 @@ use tokio::time;
 use crate::error::ClientError;
 use crate::{Handler, Output};
 
-pub struct Password {
+pub struct PasswordAuth {
     pub(crate) username: String,
     pub(crate) password: String,
 }
 
-impl Password {
+impl PasswordAuth {
     pub fn new<S: ToString>(username: S, password: S) -> Self {
         Self {
             username: username.to_string(),
@@ -23,7 +23,7 @@ impl Password {
 }
 
 pub enum AuthMethod {
-    Password(Password),
+    Password(PasswordAuth),
 }
 
 pub struct ClientBuilder {
