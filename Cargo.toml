@@ -15,7 +15,7 @@ categories = ["network-programming", "asynchronous", "ssh"]
 tokio = { version = "1", features = ["time"]}
 thrussh = "0.33.5"
 thrussh-keys = "0.21.0"
+thiserror = "1.0.31"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"]}
-anyhow = "1.0.58"

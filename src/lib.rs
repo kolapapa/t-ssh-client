@@ -1,24 +1,28 @@
+mod error;
+
 use std::future;
 use std::io::Write;
+use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::time::Duration;
 
+use error::ClientError;
 use thrussh_keys::key;
 use tokio::time;
 
 #[derive(Default)]
 pub struct Output {
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-    code: Option<u32>,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+    pub code: Option<u32>,
 }
 
 impl Output {
-    pub fn stdout(&self) -> String {
+    pub fn stdout_string(&self) -> String {
         String::from_utf8_lossy(&self.stdout).into()
     }
 
-    pub fn stderr(&self) -> String {
+    pub fn stderr_string(&self) -> String {
         String::from_utf8_lossy(&self.stderr).into()
     }
 
@@ -49,39 +53,84 @@ impl thrussh::client::Handler for Handler {
     }
 }
 
-pub struct Session {
-    inner: thrussh::client::Handle<Handler>,
+pub enum AuthMethod {
+    Password(String),
 }
 
-impl Session {
-    pub async fn connect(addr: &str, timeout: Duration) -> Result<Session, thrussh::Error> {
+pub struct ClientBuilder {
+    username: String,
+    auth: Option<AuthMethod>,
+    connect_timeout: Duration,
+}
+
+impl ClientBuilder {
+    pub fn new<S: ToString>(username: S) -> Self {
+        Self {
+            username: username.to_string(),
+            auth: None,
+            connect_timeout: Duration::from_secs(10),
+        }
+    }
+
+    pub fn auth(&mut self, auth: AuthMethod) -> &mut Self {
+        self.auth = Some(auth);
+        self
+    }
+
+    pub fn connect_timeout(&mut self, timeout: Duration) -> &mut Self {
+        self.connect_timeout = timeout;
+        self
+    }
+
+    pub async fn connect<T: ToSocketAddrs>(&self, addr: T) -> Result<Client, ClientError> {
         let config = Arc::new(thrussh::client::Config::default());
         match time::timeout(
-            timeout,
+            self.connect_timeout,
             thrussh::client::connect(config, addr, Handler::default()),
         )
         .await
         {
-            Ok(Ok(handle)) => Ok(Self { inner: handle }),
-            Ok(Err(err)) => Err(err),
-            Err(err) => Err(thrussh::Error::Elapsed(err)),
+            Ok(Ok(handle)) => {
+                let mut client = Client { inner: handle };
+                match &self.auth {
+                    Some(AuthMethod::Password(password)) => {
+                        client.auth_with_password(&self.username, password).await?
+                    }
+                    None => {}
+                }
+                Ok(client)
+            }
+            Ok(Err(err)) => return Err(ClientError::ClientFailed(err)),
+            Err(_) => return Err(ClientError::Timeout),
         }
     }
+}
 
-    pub async fn auth_with_password(
+pub struct Client {
+    inner: thrussh::client::Handle<Handler>,
+}
+
+impl Client {
+    pub fn builder(username: impl ToString) -> ClientBuilder {
+        ClientBuilder::new(username)
+    }
+
+    pub(crate) async fn auth_with_password(
         &mut self,
         username: &str,
         password: &str,
-    ) -> Result<(), thrussh::Error> {
-        let success = self.inner.authenticate_password(username, password).await?;
-        if !success {
-            return Err(thrussh::Error::NotAuthenticated);
+    ) -> Result<(), ClientError> {
+        match self.inner.authenticate_password(username, password).await {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(ClientError::AuthFailed(String::from(
+                "username or password is wrong!",
+            ))),
+            Err(e) => Err(ClientError::ClientFailed(e)),
         }
-        Ok(())
     }
 
     #[allow(unused_variables)]
-    pub async fn execute(&mut self, command: &str) -> Result<Output, thrussh::Error> {
+    pub async fn output(&mut self, command: &str) -> Result<Output, ClientError> {
         let mut channel = self.inner.channel_open_session().await?;
         channel.exec(true, command).await?;
         let mut res = Output::default();
@@ -90,20 +139,19 @@ impl Session {
                 thrussh::ChannelMsg::Data { ref data } => {
                     res.stdout.write_all(&data)?;
                 }
-                thrussh::ChannelMsg::ExitStatus { exit_status } => {
-                    res.code = Some(exit_status);
-                }
                 thrussh::ChannelMsg::ExtendedData { ref data, ext } => {
                     res.stderr.write_all(&data)?;
                 }
-
+                thrussh::ChannelMsg::ExitStatus { exit_status } => {
+                    res.code = Some(exit_status);
+                }
                 _ => {}
             }
         }
         Ok(res)
     }
 
-    pub async fn close(&mut self) -> Result<(), thrussh::Error> {
+    pub async fn close(&mut self) -> Result<(), ClientError> {
         self.inner
             .disconnect(thrussh::Disconnect::ByApplication, "", "English")
             .await?;
