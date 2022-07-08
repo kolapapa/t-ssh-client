@@ -1,6 +1,6 @@
 [package]
 name = "t-ssh-client"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["kolapapa <kolapapa2021@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -12,7 +12,7 @@ categories = ["network-programming", "asynchronous"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["time"]}
+tokio = { version = "1", default-features = false, features = ["time"]}
 thrussh = "0.33.5"
 thrussh-keys = "0.21.0"
 thiserror = "1.0.31"
