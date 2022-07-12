@@ -32,6 +32,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## License
 
-This project is licensed under the [MIT license].
+This project is licensed under the [Apache-2.0 license].
 
-[MIT license]: https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE
+[Apache-2.0 license]: https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE
