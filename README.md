@@ -2,7 +2,7 @@
 Rust async `ssh client` wrapped by [thrussh](https://pijul.org/thrussh).
 
 [![Crates.io](https://img.shields.io/crates/v/t-ssh-client.svg)](https://crates.io/crates/t-ssh-client)
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE)
+[![Apache-2.0 licensed](https://img.shields.io/crates/l/t-ssh-client/0.1.2)](https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE)
 [![API docs](https://docs.rs/t-ssh-client/badge.svg)](http://docs.rs/t-ssh-client)
 
 ## Example
