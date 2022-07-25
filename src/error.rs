@@ -13,4 +13,6 @@ pub enum ClientError {
     AuthFailed(String),
     #[error("encode/decode failed: {0}")]
     KeyError(#[from] thrussh_keys::Error),
+    #[error("login username is empty.")]
+    UsernameEmpty,
 }

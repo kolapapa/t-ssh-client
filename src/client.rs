@@ -9,7 +9,9 @@ use crate::error::ClientError;
 use crate::{Handler, Output};
 
 pub enum AuthMethod {
+    // Password string
     Password(String),
+    // Secret key path
     Key(String),
 }
 
@@ -52,6 +54,9 @@ impl ClientBuilder {
         .await
         {
             Ok(Ok(handle)) => {
+                if self.username.is_empty() {
+                    return Err(ClientError::UsernameEmpty);
+                }
                 let mut client = Client {
                     inner: handle,
                     username: self.username.clone(),
