@@ -1,6 +1,6 @@
 [package]
 name = "t-ssh-client"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["kolapapa <kolapapa2021@gmail.com>"]
 edition = "2021"
 license = "MIT"
