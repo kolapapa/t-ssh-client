@@ -3,30 +3,20 @@ use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::time;
+use tokio::{fs, time};
 
 use crate::error::ClientError;
 use crate::{Handler, Output};
 
-pub struct PasswordAuth {
-    pub(crate) username: String,
-    pub(crate) password: String,
-}
-
-impl PasswordAuth {
-    pub fn new<S: ToString>(username: S, password: S) -> Self {
-        Self {
-            username: username.to_string(),
-            password: password.to_string(),
-        }
-    }
-}
-
 pub enum AuthMethod {
-    Password(PasswordAuth),
+    // Password string
+    Password(String),
+    // Secret key path
+    Key(String),
 }
 
 pub struct ClientBuilder {
+    username: String,
     auth: Option<AuthMethod>,
     connect_timeout: Duration,
 }
@@ -34,9 +24,15 @@ pub struct ClientBuilder {
 impl ClientBuilder {
     pub fn new() -> Self {
         Self {
+            username: String::default(),
             auth: None,
             connect_timeout: Duration::from_secs(10),
         }
+    }
+
+    pub fn username<S: ToString>(&mut self, username: S) -> &mut Self {
+        self.username = username.to_string();
+        self
     }
 
     pub fn auth(&mut self, auth: AuthMethod) -> &mut Self {
@@ -58,10 +54,19 @@ impl ClientBuilder {
         .await
         {
             Ok(Ok(handle)) => {
-                let mut client = Client { inner: handle };
+                if self.username.is_empty() {
+                    return Err(ClientError::UsernameEmpty);
+                }
+                let mut client = Client {
+                    inner: handle,
+                    username: self.username.clone(),
+                };
                 match &self.auth {
-                    Some(AuthMethod::Password(p)) => {
-                        client.auth_with_password(&p.username, &p.password).await?
+                    Some(AuthMethod::Password(pass)) => client.auth_with_password(&pass).await?,
+                    Some(AuthMethod::Key(path)) => {
+                        let secret: String = fs::read_to_string(path).await?;
+                        let key_pair = thrussh_keys::decode_secret_key(&secret, None)?;
+                        client.auth_with_key_pair(Arc::new(key_pair)).await?
                     }
                     None => {}
                 }
@@ -74,6 +79,7 @@ impl ClientBuilder {
 }
 
 pub struct Client {
+    username: String,
     inner: thrussh::client::Handle<Handler>,
 }
 
@@ -82,15 +88,28 @@ impl Client {
         ClientBuilder::new()
     }
 
-    pub(crate) async fn auth_with_password(
-        &mut self,
-        username: &str,
-        password: &str,
-    ) -> Result<(), ClientError> {
-        match self.inner.authenticate_password(username, password).await {
+    pub(crate) async fn auth_with_password(&mut self, password: &str) -> Result<(), ClientError> {
+        match self
+            .inner
+            .authenticate_password(&self.username, password)
+            .await
+        {
             Ok(true) => Ok(()),
             Ok(false) => Err(ClientError::AuthFailed(String::from(
                 "username or password is wrong!",
+            ))),
+            Err(e) => Err(ClientError::ClientFailed(e)),
+        }
+    }
+
+    pub(crate) async fn auth_with_key_pair(
+        &mut self,
+        key: Arc<thrussh_keys::key::KeyPair>,
+    ) -> Result<(), ClientError> {
+        match self.inner.authenticate_publickey(&self.username, key).await {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(ClientError::AuthFailed(String::from(
+                "username or key is wrong!",
             ))),
             Err(e) => Err(ClientError::ClientFailed(e)),
         }
