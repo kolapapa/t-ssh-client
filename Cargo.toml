@@ -16,6 +16,7 @@ tokio = { version = "1", default-features = false, features = ["time", "fs"]}
 thrussh = "0.33.5"
 thrussh-keys = "0.21.0"
 thiserror = "1.0.31"
+log = "0.4.17"
 
 [features]
 openssl = ["thrussh/openssl", "thrussh-keys/openssl"]

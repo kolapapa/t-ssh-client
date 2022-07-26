@@ -3,6 +3,7 @@ use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::time::Duration;
 
+use log::trace;
 use tokio::{fs, time};
 
 use crate::error::ClientError;
@@ -54,6 +55,7 @@ impl ClientBuilder {
         .await
         {
             Ok(Ok(handle)) => {
+                trace!("connected");
                 if self.username.is_empty() {
                     return Err(ClientError::UsernameEmpty);
                 }
@@ -98,7 +100,10 @@ impl Client {
             Ok(false) => Err(ClientError::AuthFailed(String::from(
                 "username or password is wrong!",
             ))),
-            Err(e) => Err(ClientError::ClientFailed(e)),
+            Err(e) => {
+                trace!("auth with password failed: {}", e);
+                Err(ClientError::ClientFailed(e))
+            }
         }
     }
 
@@ -111,14 +116,19 @@ impl Client {
             Ok(false) => Err(ClientError::AuthFailed(String::from(
                 "username or key is wrong!",
             ))),
-            Err(e) => Err(ClientError::ClientFailed(e)),
+            Err(e) => {
+                trace!("auth with key pair failed: {}", e);
+                Err(ClientError::ClientFailed(e))
+            }
         }
     }
 
     #[allow(unused_variables)]
     pub async fn output(&mut self, command: &str) -> Result<Output, ClientError> {
         let mut channel = self.inner.channel_open_session().await?;
+        trace!("channel open session success!");
         channel.exec(true, command).await?;
+        trace!("exec success!");
         let mut res = Output::default();
         while let Some(msg) = channel.wait().await {
             match msg {
