@@ -2,8 +2,14 @@
 Rust async `ssh client` wrapped by [thrussh](https://pijul.org/thrussh).
 
 [![Crates.io](https://img.shields.io/crates/v/t-ssh-client.svg)](https://crates.io/crates/t-ssh-client)
-[![Apache-2.0 licensed](https://img.shields.io/crates/l/t-ssh-client/0.1.2)](https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE)
+[![Apache-2.0 licensed](https://img.shields.io/github/license/kolapapa/t-ssh-client)](https://github.com/kolapapa/t-ssh-client/blob/main/LICENSE)
 [![API docs](https://docs.rs/t-ssh-client/badge.svg)](http://docs.rs/t-ssh-client)
+
+## Usage
+```toml
+# enable openssl support
+t-ssh-client = { version = "0.2.1", features = ["openssl"]}
+```
 
 ## Example
 ```rust

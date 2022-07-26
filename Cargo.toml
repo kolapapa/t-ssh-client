@@ -1,6 +1,6 @@
 [package]
 name = "t-ssh-client"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["kolapapa <kolapapa2021@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -13,9 +13,12 @@ categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1", default-features = false, features = ["time", "fs"]}
-thrussh = { version = "0.33.5", features = ["openssl"]}
-thrussh-keys = { version = "0.21.0", features = ["openssl"]}
+thrussh = "0.33.5"
+thrussh-keys = "0.21.0"
 thiserror = "1.0.31"
+
+[features]
+openssl = ["thrussh/openssl", "thrussh-keys/openssl"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"]}
